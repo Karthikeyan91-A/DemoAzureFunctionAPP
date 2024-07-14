@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Extensions.ServiceBus;
+
 using Microsoft.Extensions.Logging;
 
 namespace DemoAZFunctionApp
@@ -10,15 +11,17 @@ namespace DemoAZFunctionApp
     {
         
         [Function(nameof(FuncSBTrigger))]
-        public static void Run (
+        [ServiceBusOutput("sbouttest", Connection = "ServiceBusConnection")]
+        public string ServiceBusFunction(
             [ServiceBusTrigger("sbtest", Connection = "ServiceBusConnection")] string inputMessage,
-            [ServiceBus("sbouttest", Connection = "ServiceBusConnection")] out string outputMessage
-            , FunctionContext context)
+             FunctionContext context)
         {
             var logger = context.GetLogger<FuncSBTrigger>();
             logger.LogInformation($"C# ServiceBus queue trigger function processed message: {inputMessage}");
 
-            outputMessage = $"Processed message: {inputMessage}";
+            string outputMessage = $"Processed message: {inputMessage}";
+
+            return outputMessage;
 
         }
     }
