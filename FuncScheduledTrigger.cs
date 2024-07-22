@@ -1,27 +1,45 @@
-using System;
+using System.IO;
+using System.Text;
+using System.Threading.Tasks;
+using Azure.Storage.Blobs;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
 
-namespace DemoAZFunctionApp
+public static class FuncScheduledTrigger
 {
-    public class FuncScheduledTrigger
+    [Function("FuncScheduledTrigger")]
+    public static async Task Run(
+        [TimerTrigger("0 */10 * * * *")] TimerInfo myTimer,
+        FunctionContext context)
     {
-        private readonly ILogger _logger;
+        var log = context.GetLogger("FuncScheduledTrigger");
+        log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
 
-        public FuncScheduledTrigger(ILoggerFactory loggerFactory)
-        {
-            _logger = loggerFactory.CreateLogger<FuncScheduledTrigger>();
-        }
+        
+        string fileName = $"file_{DateTime.Now:yyyyMMdd_HHmmss}.txt";
+        string fileContent = $"This is a file created at {DateTime.Now}";
 
-        [Function("FuncScheduledTrigger")]
-        public void Run([TimerTrigger("0 */5 * * * *")] TimerInfo myTimer)
-        {
-            _logger.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
-            
-            if (myTimer.ScheduleStatus is not null)
-            {
-                _logger.LogInformation($"Next timer schedule at: {myTimer.ScheduleStatus.Next}");
-            }
-        }
+      
+        var stream = new MemoryStream(Encoding.UTF8.GetBytes(fileContent));
+
+        
+        string connectionString = Environment.GetEnvironmentVariable("BlobStorageConnection");
+
+    
+        BlobServiceClient blobServiceClient = new BlobServiceClient(connectionString);
+
+        
+        string containerName = "logcontainer";
+        BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(containerName);
+
+       
+        await containerClient.CreateIfNotExistsAsync();
+
+        
+        BlobClient blobClient = containerClient.GetBlobClient(fileName);
+        await blobClient.UploadAsync(stream, overwrite: true);
+
+        log.LogInformation($"File {fileName} uploaded to blob storage.");
     }
 }
